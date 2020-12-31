@@ -1,6 +1,6 @@
 # Splunk Whisperer 2 (Python)
 ## Usage
-I created two files to reduce dependencies (no HTTP server) when building the LPE executable file.
+**Now using Python3.** Two files were created to reduce dependencies (no HTTP server) when building the LPE executable file.
 
 * Local Privilege Escalation (LPE): you have a shell on the computer, then use `PySplunkWhisperer2_local.py`. The following arguments exist but are optional:
     * `--scheme`, default="https"
@@ -32,6 +32,7 @@ The current code targets Universal Forwarders running on Windows by default. If 
 
 ### Credits
 This tool is inspired by [the original Splunk Whisperer](https://github.com/airman604/splunk_whisperer) by @airman604.
+The [original code in Python2](https://github.com/cnotin/SplunkWhisperer2) was developed by @cnotin.
 
 The main advantage of this version is that the Deployment Server used by the Universal Forwarder is not changed. It only installs a new application (then removes it) so it is less intrusive and the code is simpler.
 

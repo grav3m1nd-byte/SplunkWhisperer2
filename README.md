@@ -1,6 +1,6 @@
 # SplunkWhisperer2
 ## Description
-Local privilege escalation, or remote code execution, through Splunk Universal Forwarder (UF) misconfigurations.
+Local privilege escalation, or remote code execution, through Splunk Universal Forwarder (UF) misconfigurations. This instance was forked from cnotin/SplunkWhisperer2 only to convert the Python code to Python3 as Python2 is being deprecated and it will not run properly on some Linux distros such as Kali Linux.
 See https://clement.notin.org/blog/2019/02/25/Splunk-Universal-Forwarder-Hijacking-2-SplunkWhisperer2/ for more details.
 
 ## Which one to use?
@@ -14,8 +14,25 @@ See https://clement.notin.org/blog/2019/02/25/Splunk-Universal-Forwarder-Hijacki
 
 Note also that `SharpSplunkWhisperer2` relies on the [Splunk SDK for C#](http://dev.splunk.com/csharp) library, whereas `PySplunkWhisperer2` directly calls the [Splunk REST API](http://dev.splunk.com/restapi).
 
+### Recent Changes
+PySplunkWhisperer2/PySplunkWhisperer2_local.py:
+* Optimized imports and fixed unreferenced uses from the requests library.
+* Expanded imports per IDE recommendation.
+* Fixed the use of print and input (basic changes).
+* Implemented the 'main' functionality.
+
+PySplunkWhisperer2/PySplunkWhisperer2_remote.py
+* Optimized imports and fixed unreferenced uses from the requests library.
+* Expanded imports per IDE recommendation.
+* Fixed the use of print and input (basic changes).
+* Implemented the 'main' functionality.
+
 ### Credits
 These tools are inspired by [the original Splunk Whisperer](https://github.com/airman604/splunk_whisperer) by @airman604.
+
+The [original code](https://github.com/cnotin/SplunkWhisperer2) was developed by @cnotin.
+
+All the credit for any work done here goes to @cnotin and the original inspiration.
 
 The main advantage of these versions is that the Deployment Server used by the UF is not changed. It only installs a new application (then removes it) so it is less intrusive and the code is simpler.
 

